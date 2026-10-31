@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SV1NK SSTV Gallery</title>
 <style>
+* { box-sizing: border-box; }
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -16,26 +18,56 @@ header {
   padding: 35px 15px;
   background: #18395c;
 }
-h1 {
-  font-size: 32px;
-  margin: 5px;
-}
-.subtitle {
-  color: #b9d9f5;
-}
+h1 { font-size: 32px; margin: 5px; }
+.subtitle { color: #b9d9f5; }
 main {
-  max-width: 1000px;
-  margin: 35px auto;
+  max-width: 1100px;
+  margin: 30px auto;
   padding: 15px;
 }
 .gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+.photo {
   background: #1b2b40;
-  padding: 35px;
+  padding: 10px;
   border-radius: 12px;
+}
+.photo img {
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  cursor: pointer;
+  background: #080e18;
+  border-radius: 7px;
+}
+.date {
+  color: #b9d9f5;
+  padding: 10px 2px 3px;
+  font-size: 14px;
 }
 footer {
   padding: 25px;
   color: #a9c3dc;
+}
+#status { color: #b9d9f5; padding: 25px; }
+#viewer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.94);
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: pointer;
+}
+#viewer img {
+  max-width: 95%;
+  max-height: 90vh;
+  object-fit: contain;
 }
 </style>
 </head>
@@ -43,24 +75,97 @@ footer {
 
 <header>
   <h1>SV1NK SSTV IMAGE GALLERY</h1>
-  <div class="subtitle">
-    Amateur Radio – Slow Scan Television
-  </div>
+  <div class="subtitle">Amateur Radio – Slow Scan Television</div>
   <p>ATHENS – GREECE</p>
+  <p>Station: SV1NK</p>
 </header>
 
 <main>
-  <div class="gallery">
-    <h2>Received SSTV Images</h2>
-    <p>Welcome to my amateur radio SSTV gallery!</p>
-    <p>Images received from radio amateurs around the world.</p>
-    <p>Gallery coming soon!</p>
-  </div>
+  <h2>Received SSTV Images</h2>
+  <div id="status">Loading images...</div>
+  <div class="gallery" id="gallery"></div>
 </main>
 
+<div id="viewer" onclick="this.style.display='none'">
+  <img id="largeImage" alt="SSTV image">
+</div>
+
 <footer>
-  SV1NK | 73 DE GREECE
+  SV1NK – Amateur Radio Station<br>
+  SSTV Reception Gallery
 </footer>
+
+<script>
+const api =
+  "https://api.github.com/repos/sv1nk/SV1NK-SSTV-Gallery/contents/images";
+
+async function loadGallery() {
+  const status = document.getElementById("status");
+  const gallery = document.getElementById("gallery");
+
+  try {
+    const response = await fetch(api);
+    if (!response.ok) throw new Error("GitHub API error");
+
+    const files = await response.json();
+    const images = files
+      .filter(file => file.type === "file" &&
+        /\.jpe?g$/i.test(file.name))
+      .sort((a, b) => b.name.localeCompare(a.name));
+
+    gallery.innerHTML = "";
+
+    if (images.length === 0) {
+      status.textContent = "No SSTV images found.";
+      return;
+    }
+
+    images.forEach(file => {
+      const url =
+        "https://raw.githubusercontent.com/sv1nk/SV1NK-SSTV-Gallery/main/images/" +
+        encodeURIComponent(file.name);
+
+      const card = document.createElement("div");
+      card.className = "photo";
+
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = file.name;
+      img.loading = "lazy";
+      img.onclick = () => {
+        document.getElementById("largeImage").src = url;
+        document.getElementById("viewer").style.display = "flex";
+      };
+
+      const date = document.createElement("div");
+      date.className = "date";
+      const match = file.name.match(/(\d{8})(\d{4})/);
+
+      if (match) {
+        date.textContent =
+          match[1].slice(6,8) + "/" +
+          match[1].slice(4,6) + "/" +
+          match[1].slice(0,4) + " – " +
+          match[2].slice(0,2) + ":" +
+          match[2].slice(2,4);
+      } else {
+        date.textContent = file.name;
+      }
+
+      card.appendChild(img);
+      card.appendChild(date);
+      gallery.appendChild(card);
+    });
+
+    status.textContent = images.length + " SSTV images available";
+  } catch (error) {
+    status.textContent =
+      "Unable to load images. Please try again later.";
+  }
+}
+
+loadGallery();
+</script>
 
 </body>
 </html>
